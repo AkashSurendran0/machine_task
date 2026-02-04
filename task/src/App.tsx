@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import './App.css'
-import { Button, Card, CardActions, CardContent, CardMedia, Typography } from '@mui/material'
+import { Button, Card, CardActions, CardContent, CardMedia, Grid, Typography } from '@mui/material'
 
 import axios from 'axios'
 import { db} from './db'
@@ -82,31 +82,33 @@ function App() {
           </Button>
         </div>
       </div>
-      <div style={{display:'grid', gap:'16px', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))'}}>
-        {users.map(user => (
-          <div key={user.id}>
-            <Card>
-              <CardMedia
-                component="img"
-                height="200"
-                image={user.image}
-                alt='user image'
-              />
+      <div style={{display:'flex', gap:'2px'}}>
+        <Grid container spacing={2}>
+          {users.map(user => (
+            <div key={user.id}>
+              <Card>
+                <CardMedia
+                  component="img"
+                  height="200"
+                  image={user.image}
+                  alt='user image'
+                />
 
-              <CardContent>
-                <Typography variant="h6" align="center">
-                  {user.name}
-                </Typography>
-              </CardContent>
+                <CardContent>
+                  <Typography variant="h6" align="center">
+                    {user.name}
+                  </Typography>
+                </CardContent>
 
-              <CardActions>
-                <Button color="error" fullWidth onClick={()=>deleteUser(user.id)}>
-                  Delete
-                </Button>
-              </CardActions>
-            </Card>
-          </div>
-        ))}
+                <CardActions>
+                  <Button color="error" fullWidth onClick={()=>deleteUser(user.id)}>
+                    Delete
+                  </Button>
+                </CardActions>
+              </Card>
+            </div>
+          ))}
+        </Grid>
       </div>
     </div>
   )

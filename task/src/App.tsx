@@ -1,43 +1,38 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import './App.css'
-import { Button, Card, CardActions, CardContent, CardMedia, Typography, Grid } from '@mui/material'
+import { Button, Card, CardActions, CardContent, CardMedia, Typography } from '@mui/material'
+
 import axios from 'axios'
 import { db} from './db'
 import type { User } from './db'
 
+interface RawUser {
+  login: { uuid: string }
+  name: { title: string; first: string; last: string }
+  picture: { medium: string }
+}
 
 function App() {
   const [count, setCount] = useState(0)
   const [users, setAllUsers] = useState<User[]>([]) 
 
   
-  const getUsers = async () => {
-    const result=await fetchUsersFromDb()
-    if (result.length > 0) {
-      setAllUsers(result);
-      setCount(result.length);
-    } else {
-      await fetchUsers();
-    }
-  }
-  
-  const fetchUsers = async () => {
-    const allUsers=await axios.get('https://randomuser.me/api/?results=50')
-    const result=allUsers.data.results
-    
-    const formattedUsers:User[] = result.map((user: any) => ({
+  const fetchUsers = useCallback(async () => {
+    const allUsers = await axios.get<{ results: RawUser[] }>('https://randomuser.me/api/?results=50')
+    const result = allUsers.data.results
+
+    const formattedUsers: User[] = result.map((user) => ({
       id: user.login.uuid,
       name: `${user.name.title} ${user.name.first} ${user.name.last}`,
       image: user.picture.medium,
     }))
-    
-    await db.users.bulkAdd(formattedUsers)
-    const usersFromDb = await db.users.toArray();
 
+    await db.users.bulkAdd(formattedUsers)
+    const usersFromDb = await db.users.toArray()
 
     setAllUsers(usersFromDb)
     setCount(usersFromDb.length)
-  }
+  }, [])
   
   const fetchUsersFromDb = async () => {
     const result = await db.users.toArray();
@@ -45,8 +40,22 @@ function App() {
   };
 
   useEffect(()=>{
-    getUsers()
-  }, [])
+    let cancelled = false
+
+    ;(async () => {
+      const result = await fetchUsersFromDb()
+      if (result.length > 0) {
+        if (!cancelled) {
+          setAllUsers(result)
+          setCount(result.length)
+        }
+      } else {
+        await fetchUsers()
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [fetchUsers])
 
   const refreshUsers = async () => {
     await db.users.clear()
@@ -56,7 +65,7 @@ function App() {
   const deleteUser = async (id: string) => {
     await db.users.delete(id)
     setAllUsers(prev => (
-      prev.filter(user => user.id != id)
+      prev.filter(user => user.id !== id)
     ))
     setCount(prev => prev-1)
   }
@@ -73,33 +82,31 @@ function App() {
           </Button>
         </div>
       </div>
-      <div style={{display:'flex', gap:'2px'}}>
-        <Grid container spacing={2}>
-          {users.map(user => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={user.id}>
-              <Card>
-                <CardMedia
-                  component="img"
-                  height="200"
-                  image={user.image}
-                  alt='user image'
-                />
+      <div style={{display:'grid', gap:'16px', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))'}}>
+        {users.map(user => (
+          <div key={user.id}>
+            <Card>
+              <CardMedia
+                component="img"
+                height="200"
+                image={user.image}
+                alt='user image'
+              />
 
-                <CardContent>
-                  <Typography variant="h6" align="center">
-                    {user.name}
-                  </Typography>
-                </CardContent>
+              <CardContent>
+                <Typography variant="h6" align="center">
+                  {user.name}
+                </Typography>
+              </CardContent>
 
-                <CardActions>
-                  <Button color="error" fullWidth onClick={()=>deleteUser(user.id)}>
-                    Delete
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+              <CardActions>
+                <Button color="error" fullWidth onClick={()=>deleteUser(user.id)}>
+                  Delete
+                </Button>
+              </CardActions>
+            </Card>
+          </div>
+        ))}
       </div>
     </div>
   )
